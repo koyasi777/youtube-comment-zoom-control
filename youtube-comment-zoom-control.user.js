@@ -10,7 +10,7 @@
 // @name:de      Zoom-Steuerung für YouTube-Kommentare 🎥
 // @name:pt-BR   Controle de zoom nos comentários do YouTube 🎥
 // @name:ru      Управление масштабом комментариев на YouTube 🎥
-// @version      1.5.0
+// @version      2.0.0
 // @description         YouTubeのコメント欄を拡大・縮小するUIを追加！ホイールでズーム、クリックでリセット。状態は保存されます。
 // @description:ja      YouTubeのコメント欄を拡大・縮小するUIを追加！ホイールでズーム、クリックでリセット。状態は保存されます。
 // @description:en      Adds zoom controls to YouTube comments! Scroll to zoom in/out, click to reset. Zoom level is saved.
@@ -41,6 +41,11 @@
     class CommentZoomManager {
         // --- 1. 設定 (Configuration) ---
         constructor() {
+            this.pageType = this.getPageType();
+            this.containerSelector = '';
+            this.injectionTargetSelector = '';
+            this.zoomTargetSelector = '';
+
             this.SCRIPT_ID = 'youtube-comment-zoom-controls-container';
             this.STYLE_ID = 'youtube-comment-zoom-style-sheet';
             this.ZOOM_STORAGE_KEY = 'yt-comment-zoom-level';
@@ -48,9 +53,8 @@
             this.MIN_ZOOM = 50;
             this.MAX_ZOOM = 200;
             this.ZOOM_STEP = 5;
-            this.ZOOM_TARGET_SELECTOR = 'ytd-comment-thread-renderer';
-            this.UI_INJECTION_CONTAINER_SELECTOR = 'ytd-comments-header-renderer';
-            this.UI_INJECTION_TARGET_SELECTOR = '#sort-menu';
+
+            this.setSelectors();
 
             this.currentZoom = this.DEFAULT_ZOOM;
             this.uiObserver = null;
@@ -58,10 +62,14 @@
 
         // --- 2. 初期化と破棄 (Initialization & Destruction) ---
         async init() {
+            if (!this.pageType) {
+                console.log('[CommentZoom] Not a watch or shorts page. Skipping initialization.');
+                return;
+            }
             await this.loadZoomState();
             this.injectStyles();
             this.observeHeader();
-            console.log(`[CommentZoom] Initialized with zoom: ${this.currentZoom}%`);
+            console.log(`[CommentZoom] Initialized for ${this.pageType} page with zoom: ${this.currentZoom}%`);
         }
 
         stop() {
@@ -69,6 +77,27 @@
                 this.uiObserver.disconnect();
                 this.uiObserver = null;
                 console.log('[CommentZoom] Observer stopped.');
+            }
+        }
+
+        getPageType() {
+            if (location.pathname.startsWith('/watch')) return 'watch';
+            if (location.pathname.startsWith('/shorts')) return 'shorts';
+            return null;
+        }
+
+        setSelectors() {
+            switch (this.pageType) {
+                case 'watch':
+                    this.containerSelector = 'ytd-comments#comments';
+                    this.injectionTargetSelector = 'ytd-comments-header-renderer #sort-menu';
+                    this.zoomTargetSelector = 'ytd-comment-thread-renderer';
+                    break;
+                case 'shorts':
+                    this.containerSelector = 'ytd-engagement-panel-section-list-renderer[target-id="engagement-panel-comments-section"]';
+                    this.injectionTargetSelector = 'ytd-engagement-panel-title-header-renderer #menu';
+                    this.zoomTargetSelector = 'ytd-comment-thread-renderer';
+                    break;
             }
         }
 
@@ -88,7 +117,7 @@
         // --- 4. スタイル管理 (Style Management) ---
         injectStyles() {
             if (document.getElementById(this.STYLE_ID)) {
-                this.updateZoomStyle(); // 既に存在する場合はスタイルのみ更新
+                this.updateZoomStyle();
                 return;
             }
             const styleElement = document.createElement('style');
@@ -102,11 +131,12 @@
             if (!styleElement) return;
 
             const staticStyles = `
-                ytd-comments-header-renderer #sort-menu #icon-label { font-size: 10.5px !important; }
+                ytd-comments-header-renderer #sort-menu #icon-label,
+                ytd-engagement-panel-title-header-renderer #menu #label { font-size: 10.5px !important; }
                 ytd-comments-header-renderer h2#count yt-formatted-string.count-text { font-size: 1.7rem !important; }
             `;
             const dynamicZoomStyle = this.currentZoom === 100 ? '' :
-                `${this.ZOOM_TARGET_SELECTOR} { zoom: ${this.currentZoom}%; }`;
+                `${this.zoomTargetSelector} { zoom: ${this.currentZoom}%; }`;
             styleElement.textContent = staticStyles + dynamicZoomStyle;
         }
 
@@ -135,7 +165,7 @@
             });
 
             const updateDisplay = () => { zoomDisplay.textContent = `${this.currentZoom}%`; };
-            updateDisplay(); // 初期表示
+            updateDisplay();
 
             const handleZoomUpdate = () => {
                 this.saveZoomState();
@@ -179,25 +209,32 @@
 
         // --- 6. DOM監視 (DOM Observation) ---
         observeHeader() {
-            const commentsElement = document.querySelector('ytd-comments#comments');
-            if (!commentsElement) return; // コメント欄自体がなければ何もしない
+            const commentsElement = document.querySelector(this.containerSelector);
+            if (!commentsElement) {
+                if (this.pageType === 'shorts') {
+                    setTimeout(() => this.observeHeader(), 500);
+                }
+                return;
+            }
 
             this.uiObserver = new MutationObserver(() => this.updateHeaderUI());
             this.uiObserver.observe(commentsElement, { childList: true, subtree: true });
-            this.updateHeaderUI(); // 初期チェック
+            this.updateHeaderUI();
         }
 
         updateHeaderUI() {
-            if (document.getElementById(this.SCRIPT_ID)) return; // 既にUIがあれば何もしない
+            if (document.getElementById(this.SCRIPT_ID)) return;
 
-            const injectionTarget = document.querySelector(
-                `${this.UI_INJECTION_CONTAINER_SELECTOR} ${this.UI_INJECTION_TARGET_SELECTOR}`
-            );
+            const injectionTarget = document.querySelector(this.injectionTargetSelector);
 
-            if (injectionTarget && injectionTarget.parentElement) {
+            if (injectionTarget) {
                 const zoomControls = this.createZoomControls();
-                injectionTarget.parentElement.insertBefore(zoomControls, injectionTarget.nextSibling);
-                console.log('[CommentZoom] UI injected.');
+                if (this.pageType === 'shorts') {
+                    injectionTarget.insertAdjacentElement('afterend', zoomControls);
+                } else {
+                    injectionTarget.parentElement.insertBefore(zoomControls, injectionTarget.nextSibling);
+                }
+                console.log(`[CommentZoom] UI injected for ${this.pageType}.`);
             }
         }
     }
@@ -211,16 +248,13 @@
             zoomManager = null;
         }
 
-        // 動画再生ページまたはShortsページでのみ動作
-        if (location.pathname.startsWith('/watch') || location.pathname.startsWith('/shorts')) {
-             (async () => {
-                zoomManager = new CommentZoomManager();
-                await zoomManager.init();
-            })();
-        }
+        (async () => {
+            zoomManager = new CommentZoomManager();
+            await zoomManager.init();
+        })();
     }
 
     window.addEventListener('yt-navigate-finish', main);
-    main(); // 初期ロード時にも実行
+    main();
 
 })();
