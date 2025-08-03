@@ -90,7 +90,7 @@
         const container = document.createElement('div');
         container.id = SCRIPT_ID;
         Object.assign(container.style, {
-            display: 'flex', alignItems: 'center', marginLeft: '16px', padding: '4px 8px',
+            display: 'flex', alignItems: 'center', marginLeft: '8px', padding: '4px 8px',
             borderRadius: '8px', transition: 'background-color 0.2s', cursor: 'pointer', userSelect: 'none'
         });
         container.title = 'スクロールで拡大縮小 / クリックでリセット';
