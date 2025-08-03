@@ -10,7 +10,7 @@
 // @name:de      Zoom-Steuerung für YouTube-Kommentare 🎥
 // @name:pt-BR   Controle de zoom nos comentários do YouTube 🎥
 // @name:ru      Управление масштабом комментариев на YouTube 🎥
-// @version      2.1.0
+// @version      2.1.1
 // @description         YouTubeのコメント欄を拡大・縮小するUIを追加！ホイールでズーム、クリックでリセット。状態は保存されます。
 // @description:ja      YouTubeのコメント欄を拡大・縮小するUIを追加！ホイールでズーム、クリックでリセット。状態は保存されます。
 // @description:en      Adds zoom controls to YouTube comments! Scroll to zoom in/out, click to reset. Zoom level is saved.
@@ -138,7 +138,7 @@
             const staticStyles = `
                 ytd-comments-header-renderer #sort-menu #icon-label,
                 ytd-engagement-panel-title-header-renderer #menu #label { font-size: 10.5px !important; }
-                ytd-comments-header-renderer h2#count yt-formatted-string.count-text { font-size: 1.7rem !important; }
+                ytd-comments-header-renderer h2#count yt-formatted-string.count-text { font-size: 1.48rem !important; }
             `;
             const dynamicZoomStyle = this.currentZoom === 100 ? '' :
                 `${this.zoomTargetSelector} { zoom: ${this.currentZoom}%; }`;
