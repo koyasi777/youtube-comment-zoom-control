@@ -10,7 +10,7 @@
 // @name:de      Zoom-Steuerung für YouTube-Kommentare 🎥
 // @name:pt-BR   Controle de zoom nos comentários do YouTube 🎥
 // @name:ru      Управление масштабом комментариев на YouTube 🎥
-// @version      2.0.0
+// @version      2.1.0
 // @description         YouTubeのコメント欄を拡大・縮小するUIを追加！ホイールでズーム、クリックでリセット。状態は保存されます。
 // @description:ja      YouTubeのコメント欄を拡大・縮小するUIを追加！ホイールでズーム、クリックでリセット。状態は保存されます。
 // @description:en      Adds zoom controls to YouTube comments! Scroll to zoom in/out, click to reset. Zoom level is saved.
@@ -54,8 +54,13 @@
             this.MAX_ZOOM = 200;
             this.ZOOM_STEP = 5;
 
-            this.setSelectors();
+            // ツールチップの文言を定義
+            this.tooltips = {
+                ja: 'スクロールで拡大縮小 / クリックでリセット',
+                en: 'Scroll to zoom / Click to reset'
+            };
 
+            this.setSelectors();
             this.currentZoom = this.DEFAULT_ZOOM;
             this.uiObserver = null;
         }
@@ -145,10 +150,20 @@
             const container = document.createElement('div');
             container.id = this.SCRIPT_ID;
             Object.assign(container.style, {
+                position: 'relative', // ツールチップの基準点として必要
                 display: 'flex', alignItems: 'center', marginLeft: '8px', padding: '4px 8px',
                 borderRadius: '8px', transition: 'background-color 0.2s', cursor: 'pointer', userSelect: 'none'
             });
-            container.title = 'スクロールで拡大縮小 / クリックでリセット';
+
+            // ツールチップをYT標準コンポーネントで作成
+            const tooltip = document.createElement('tp-yt-paper-tooltip');
+            tooltip.setAttribute('role', 'tooltip');
+            const tooltipText = document.createElement('div');
+            tooltipText.id = 'tooltip';
+            tooltipText.className = 'style-scope tp-yt-paper-tooltip';
+            const lang = document.documentElement.lang.startsWith('ja') ? 'ja' : 'en';
+            tooltipText.textContent = this.tooltips[lang];
+            tooltip.appendChild(tooltipText);
 
             const zoomIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
             zoomIcon.setAttribute('viewBox', '0 0 24 24');
@@ -203,7 +218,7 @@
                 }
             });
 
-            container.append(zoomIcon, zoomDisplay);
+            container.append(zoomIcon, zoomDisplay, tooltip);
             return container;
         }
 
